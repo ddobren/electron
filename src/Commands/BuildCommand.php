@@ -13,24 +13,23 @@ class BuildCommand extends Command
 
     public function handle()
     {
-        $this->info('Build NativePHP app…');
+        $this->info('Building NativePHP app...');
 
-        Process::path(__DIR__.'/../../resources/js/')
+        // Step 1: Update npm dependencies
+        $this->runProcess(__DIR__.'/../../resources/js/', 'npm update');
+
+        // Step 2: Install composer dependencies without dev packages
+        $this->runProcess(base_path(), 'composer install --no-dev');
+
+        // Step 3: Build the app using npm
+        $this->runProcess(__DIR__.'/../../resources/js/', 'npm run build:mac-arm');
+    }
+
+    protected function runProcess(string $path, string $command)
+    {
+        Process::path($path)
             ->env($this->getEnvironmentVariables())
-            ->run('npm update', function (string $type, string $output) {
-                echo $output;
-            });
-
-        Process::path(base_path())
-            ->run('composer install --no-dev', function (string $type, string $output) {
-                echo $output;
-            });
-
-        Process::path(__DIR__.'/../../resources/js/')
-            ->env($this->getEnvironmentVariables())
-            ->forever()
-            ->tty()
-            ->run('npm run build:mac-arm', function (string $type, string $output) {
+            ->run($command, function (string $type, string $output) {
                 echo $output;
             });
     }
@@ -51,7 +50,7 @@ class BuildCommand extends Command
                 'NATIVEPHP_APP_AUTHOR' => config('nativephp.author'),
                 'NATIVEPHP_UPDATER_CONFIG' => json_encode(Updater::builderOptions()),
             ],
-            Updater::environmentVariables(),
+            Updater::environmentVariables()
         );
     }
 }
